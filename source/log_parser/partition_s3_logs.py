@@ -17,6 +17,7 @@ import re
 from os import environ
 from lib.boto3_util import create_client
 from lib.logging_util import set_log_level
+import json
 
 def lambda_handler(event, _):
     """
@@ -36,8 +37,9 @@ def lambda_handler(event, _):
         # ----------------------------------------------------------
         # Process event
         # ----------------------------------------------------------
-        log.info(event)
-        
+        print(event)
+        event = json.loads(event["Records"][0]['Sns']["Message"])
+
         keep_original_data = str(environ['KEEP_ORIGINAL_DATA'].upper())
         endpoint = str(environ['ENDPOINT'].upper())
         log.info("\n[partition_s3_logs lambda_handler] KEEP ORIGINAL DATA: %s; End POINT: %s."

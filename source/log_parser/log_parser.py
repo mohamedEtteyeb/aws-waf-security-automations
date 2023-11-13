@@ -12,6 +12,7 @@
 ######################################################################################################################
 
 import os
+import json
 from os import environ
 from urllib.parse import unquote_plus
 from lib.waflibv2 import WAFLIBv2
@@ -172,14 +173,15 @@ def lambda_handler(event, _):
         log.info(event)
 
         athena_log_parser = AthenaLogParser(log)
+        sns_event=json.loads(event["Records"][0]['Sns']["Message"])
 
-        if "resourceType" in event:
+        if "resourceType" in event: 
             athena_log_parser.process_athena_scheduler_event(event)
             result['message'] = "[lambda_handler] Athena scheduler event processed."
             log.info(result['message'])
-
-        elif 'Records' in event:
+        elif 'Records' in sns_event:
             lambda_log_parser = LambdaLogParser(log)
+            event=sns_event
             for record in event['Records']:
                 process_record(record, log, result, athena_log_parser, lambda_log_parser)
                 send_anonymized_usage_data(log)

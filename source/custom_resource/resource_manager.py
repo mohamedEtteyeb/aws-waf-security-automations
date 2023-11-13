@@ -14,6 +14,7 @@
 import json
 import botocore
 import os
+import boto3
 from logging import Logger
 from lib.waflibv2 import WAFLIBv2
 from lib.boto3_util import create_client
@@ -108,9 +109,10 @@ class ResourceManager:
                     new_conf['QueueConfigurations'] = notification_conf['QueueConfigurations']
 
                 if lambda_parser:
+                    topic_arn = self.create_sns_topic(lambda_function_arn)
                     new_conf['LambdaFunctionConfigurations'].append({
                         'Id': 'Call Log Parser',
-                        'LambdaFunctionArn': lambda_function_arn,
+                        'LambdaFunctionArn': topic_arn,
                         'Events': [S3_OBJECT_CREATED],
                         'Filter': {'Key': {'FilterRules': [{'Name': 'suffix', 'Value': 'gz'}]}}
                     })
@@ -615,10 +617,28 @@ class ResourceManager:
         self.log.info("[add_athena_partitions] Lambda invocation response:\n%s" % response)
         self.log.info("[add_athena_partitions] End")
     
+
+
     
     # ======================================================================================================================
     # Auxiliary Functions
     # ======================================================================================================================
+    def create_sns_topic(self,lambda_function_arn):
+
+        sns_client = boto3.client('sns', region_name='ap-south-1')
+
+        topic_name = 'LamdbdaLogParser'
+        response = sns_client.create_topic(Name=topic_name)
+        topic_arn = response['TopicArn']
+
+        # Subscribe the SNS topic to the Lambda function
+        sns_client.subscribe(
+            TopicArn=topic_arn,
+            Protocol='lambda',
+            Endpoint=lambda_function_arn)
+        return topic_arn
+
+
     def send_anonymized_usage_data(self, action_type, resource_properties):
         try:
             if 'SendAnonymizedUsageData' not in resource_properties or resource_properties[
